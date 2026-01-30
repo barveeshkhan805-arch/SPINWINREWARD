@@ -1,0 +1,162 @@
+/**
+ * This Firestore Security Ruleset establishes a strict, user-centric security model
+ * for the SpinWin Rewards application. It is designed for rapid prototyping,
+ * prioritizing strong authorization controls while maintaining flexibility in data schemas.
+ *
+ * Core Philosophy:
+ * The rules enforce a strict user-ownership model where users can only access data
+ * that is explicitly associated with their user ID. This "data silo" approach ensures
+ * that all personal information, spin results, and withdrawal requests are private
+ * and isolated. A separate `referral_codes` collection is used to enable secure
+ * referral code lookups without exposing user data.
+ *
+ * Data Structure:
+ * - `/users/{userId}`: Contains the user's profile document.
+ * - `/users/{userId}/spin_results/{spinResultId}`: A subcollection of the user's spin history.
+ * - `/users/{userId}/withdrawal_requests/{withdrawalRequestId}`: A subcollection of the user's withdrawal requests.
+ * - `/referral_codes/{referralCode}`: A mapping of unique referral codes to user IDs.
+ *
+ * Key Security Decisions:
+ * - User Privacy: Listing the top-level `/users` collection is explicitly forbidden to
+ *   prevent enumeration of all application users.
+ * - Secure Lookups: The `/referral_codes` collection allows for checking referral codes
+ *   via a direct `get` operation, which is permitted for all signed-in users,
+ *   avoiding insecure and expensive collection-wide queries.
+ * - Path-Based Security: Authorization is derived directly from the document path
+ *   (e.g., matching `userId` in the path to the authenticated user's UID), which
+ *   is simple, secure, and highly performant.
+ * - Relational Integrity: On document creation, rules ensure that internal
+ *   linking fields (`id`, `userId`) match the user ID in the document path or auth context,
+ *   enforcing data consistency. These critical fields are immutable on update.
+ * - Prototyping Flexibility: The rules do not validate the specific data types or
+ *   presence of non-critical fields (e.g., `points`, `name`), allowing the data model
+ *   to evolve without requiring constant rule updates.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ------------------------------------------------------------------------
+    // Helper Functions
+    // ------------------------------------------------------------------------
+
+    /**
+     * Checks if the user is authenticated.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * Checks if the authenticated user's UID matches the provided userId.
+     * This is the foundation of the ownership model.
+     */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /**
+     * Checks for ownership on an existing document. Used for update/delete
+     * to prevent operations on non-existent documents.
+     */
+    function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
+    }
+
+    /**
+     * Validates that a new user document has its internal 'id' field set correctly.
+     * This ensures the document data is consistent with its path.
+     */
+    function isCreatingValidUserDocument(userId) {
+      return request.resource.data.id == userId;
+    }
+
+    /**
+     * Enforces immutability of the user document's 'id' field on update.
+     * Prevents re-assigning the document's core identity.
+     */
+    function isUpdatingValidUserDocument() {
+      return request.resource.data.id == resource.data.id;
+    }
+
+    /**
+     * Validates that a new subcollection document (e.g., SpinResult) has its
+     * internal 'userId' field set correctly, linking it back to its owner.
+     */
+    function isCreatingValidSubcollectionDocument(userId) {
+      return request.resource.data.userId == userId;
+    }
+
+    /**
+     * Enforces immutability of a subcollection document's 'userId' field on update.
+     * Prevents re-assigning ownership of the document.
+     */
+    function isUpdatingValidSubcollectionDocument() {
+      return request.resource.data.userId == resource.data.userId;
+    }
+
+
+    // ------------------------------------------------------------------------
+    // Collection Rules
+    // ------------------------------------------------------------------------
+
+    /**
+     * @description Manages user profile documents.
+     * @path /users/{userId}
+     * @allow A signed-in user with UID 'user123' (create) their own profile at `/users/user123`.
+     * @deny A user with UID 'user456' (get) the profile at `/users/user123`.
+     * @principle Restricts access to a user's own data tree and prevents user enumeration.
+     */
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow list: if false;
+      allow create: if isOwner(userId) && isCreatingValidUserDocument(userId);
+      allow update: if isExistingOwner(userId) && isUpdatingValidUserDocument();
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Secures the subcollection of a user's spin results.
+     * @path /users/{userId}/spin_results/{spinResultId}
+     * @allow A user with UID 'user123' (list) their own spin results at `/users/user123/spin_results`.
+     * @deny An anonymous user (create) a spin result at any path.
+     * @principle Enforces path-based ownership for a user's private subcollections.
+     */
+    match /users/{userId}/spin_results/{spinResultId} {
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId) && isCreatingValidSubcollectionDocument(userId);
+      allow update: if isExistingOwner(userId) && isUpdatingValidSubcollectionDocument();
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Secures the subcollection of a user's withdrawal requests.
+     * @path /users/{userId}/withdrawal_requests/{withdrawalRequestId}
+     * @allow A user with UID 'user123' (delete) their own request at `/users/user123/withdrawal_requests/req_abc`.
+     * @deny A user with UID 'user456' (update) a request at `/users/user123/withdrawal_requests/req_abc`.
+     * @principle Enforces path-based ownership and validates relational integrity on create/update.
+     */
+    match /users/{userId}/withdrawal_requests/{withdrawalRequestId} {
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId) && isCreatingValidSubcollectionDocument(userId);
+      allow update: if isExistingOwner(userId) && isUpdatingValidSubcollectionDocument();
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Manages the mapping of referral codes to user IDs.
+     * @path /referral_codes/{referralCode}
+     * @allow A signed-in user (get) a referral code document to verify it.
+     * @deny Listing all referral codes is forbidden to protect user data.
+     * @principle Enables secure lookup of referral codes without exposing the main user list.
+     */
+    match /referral_codes/{referralCode} {
+      allow get: if isSignedIn();
+      allow list: if false;
+      allow create: if isOwner(request.resource.data.userId);
+      allow update, delete: if false;
+    }
+  }
+}

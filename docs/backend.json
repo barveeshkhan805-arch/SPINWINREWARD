@@ -1,0 +1,223 @@
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user of the SpinWin Rewards application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the User entity."
+        },
+        "googleId": {
+          "type": "string",
+          "description": "The Google ID of the user, used for authentication."
+        },
+        "email": {
+          "type": "string",
+          "description": "The email address of the user.",
+          "format": "email"
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the user."
+        },
+        "mobileNumber": {
+          "type": "string",
+          "description": "The mobile number of the user."
+        },
+        "points": {
+          "type": "number",
+          "description": "The current number of points the user has."
+        },
+        "referralCode": {
+          "type": "string",
+          "description": "The referral code of the user."
+        },
+        "referredByUserId": {
+          "type": "string",
+          "description": "Reference to the User who referred this user. (Relationship: User 1:N User)"
+        }
+      },
+      "required": [
+        "id",
+        "googleId",
+        "email",
+        "name",
+        "mobileNumber",
+        "points"
+      ]
+    },
+    "SpinResult": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "SpinResult",
+      "type": "object",
+      "description": "Represents the result of a single spin of the wheel.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the SpinResult entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N SpinResult)"
+        },
+        "spinTime": {
+          "type": "string",
+          "description": "The date and time the spin occurred.",
+          "format": "date-time"
+        },
+        "pointsEarned": {
+          "type": "number",
+          "description": "The number of points earned from the spin."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "spinTime",
+        "pointsEarned"
+      ]
+    },
+    "WithdrawalRequest": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "WithdrawalRequest",
+      "type": "object",
+      "description": "Represents a user's request to withdraw points.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the WithdrawalRequest entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N WithdrawalRequest)"
+        },
+        "requestTime": {
+          "type": "string",
+          "description": "The date and time the withdrawal request was made.",
+          "format": "date-time"
+        },
+        "pointsRequested": {
+          "type": "number",
+          "description": "The number of points the user requested to withdraw."
+        },
+        "paymentMethod": {
+          "type": "string",
+          "description": "The payment method chosen by the user (e.g., Google Play, UPI)."
+        },
+        "status": {
+          "type": "string",
+          "description": "The status of the withdrawal request (e.g., pending, approved, rejected)."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "requestTime",
+        "pointsRequested",
+        "paymentMethod",
+        "status"
+      ]
+    },
+    "ReferralCode": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ReferralCode",
+      "type": "object",
+      "description": "Maps a unique referral code to a user.",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "The ID of the user who owns this referral code."
+        }
+      },
+      "required": [
+        "userId"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profiles. Path-based ownership ensures only the user can read/write their own profile.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/spin_results/{spinResultId}",
+        "definition": {
+          "entityName": "SpinResult",
+          "schema": {
+            "$ref": "#/backend/entities/SpinResult"
+          },
+          "description": "Stores spin results for each user. Path-based ownership is enforced.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            },
+            {
+              "name": "spinResultId",
+              "description": "The unique identifier of the spin result."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/withdrawal_requests/{withdrawalRequestId}",
+        "definition": {
+          "entityName": "WithdrawalRequest",
+          "schema": {
+            "$ref": "#/backend/entities/WithdrawalRequest"
+          },
+          "description": "Stores withdrawal requests made by each user. Path-based ownership is enforced.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            },
+            {
+              "name": "withdrawalRequestId",
+              "description": "The unique identifier of the withdrawal request."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/referral_codes/{referralCode}",
+        "definition": {
+          "entityName": "ReferralCode",
+          "schema": {
+            "$ref": "#/backend/entities/ReferralCode"
+          },
+          "description": "Stores a mapping of referral codes to user IDs to allow for lookups without exposing user data.",
+          "params": [
+            {
+              "name": "referralCode",
+              "description": "The unique referral code."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to securely manage user data, spin results, and withdrawal requests for the SpinWin Rewards application. It uses path-based ownership for user-specific data, ensuring only the user can access their own information. The design prioritizes authorization independence by avoiding `get()` calls in security rules. A dedicated `referral_codes` collection is used to allow for referral code lookups without violating security rules that prevent listing all users.\n\n*   `/users/{userId}`: Stores user profiles. All documents in this collection share the same security requirements (only the user can read/write their own profile). This collection segregation contributes to QAPs.\n*   `/users/{userId}/spin_results/{spinResultId}`: Stores spin results for each user. This path enforces ownership. The structure inherently supports secure `list` operations because each user's spin results are isolated within their own path, satisfying QAPs.\n*   `/users/{userId}/withdrawal_requests/{withdrawalRequestId}`: Stores withdrawal requests made by each user. Similar to spin results, this ensures that users can only access their own withdrawal requests, supporting secure `list` operations (QAPs).\n*   `/referral_codes/{referralCode}`: Maps a referral code to a `userId`. This allows the application to verify a referral code via a direct `get` operation, which is secure and efficient, avoiding an insecure query across the entire `users` collection.\n\nThis structure avoids the need for complex authorization logic or `get()` calls in security rules. Each collection is structurally segregated based on ownership, enabling efficient and secure data access, and simplified security rules."
+  }
+}
