@@ -69,6 +69,14 @@ export function SpinWheel({ onSpinComplete, onSpinStartCheck }: SpinWheelProps) 
   return (
     <div className="relative flex flex-col items-center justify-center">
       <div className="relative w-72 h-72 md:w-80 md:h-80">
+        <div className="absolute top-1/2 left-[-17px] -translate-y-1/2 z-10 drop-shadow-lg">
+            <div className="w-0 h-0 
+            border-t-[15px] border-t-transparent
+            border-r-[25px] border-r-destructive
+            border-b-[15px] border-b-transparent
+            ">
+            </div>
+        </div>
         <div
           className="relative w-full h-full rounded-full border-8 border-card shadow-inner"
           style={{
