@@ -1,6 +1,14 @@
-import { redirect } from 'next/navigation';
+'use client';
+
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
 export default function MainPage() {
-  redirect('/earn');
+  const router = useRouter();
+
+  useEffect(() => {
+    router.replace('/earn');
+  }, [router]);
+
   return null;
 }
