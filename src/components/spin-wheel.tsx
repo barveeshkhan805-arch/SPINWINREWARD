@@ -52,8 +52,8 @@ export function SpinWheel({ onSpinComplete, onSpinStartCheck }: SpinWheelProps) 
     setTimeout(() => {
       // After animation, calculate the winning slice based on final position.
       const finalAngle = newRotation % 360;
-      // The pointer is at 180 degrees (left side). We find which slice angle from the original wheel now sits at 180 degrees.
-      const winningAngle = (180 - finalAngle + 360) % 360;
+      // The pointer is at 270 degrees (bottom side). We find which slice angle from the original wheel now sits at 270 degrees.
+      const winningAngle = (270 - finalAngle + 360) % 360;
       
       // Determine the index of the winning slice
       const winningSliceIndex = Math.floor(winningAngle / sliceAngle);
@@ -68,42 +68,49 @@ export function SpinWheel({ onSpinComplete, onSpinStartCheck }: SpinWheelProps) 
 
   return (
     <div className="relative flex flex-col items-center justify-center">
-      <div className="relative w-72 h-72 md:w-80 md:h-80">
-        <div className="absolute top-1/2 left-[-17px] -translate-y-1/2 z-10 drop-shadow-lg">
+      <div className="relative w-72 h-72 md:w-80 md:h-80 drop-shadow-2xl">
+        {/* Pointer/Arrow at bottom */}
+        <div className="absolute bottom-[-15px] left-1/2 -translate-x-1/2 z-10">
             <div className="w-0 h-0 
-            border-t-[15px] border-t-transparent
-            border-r-[25px] border-r-destructive
-            border-b-[15px] border-b-transparent
+            border-l-[18px] border-l-transparent
+            border-r-[18px] border-r-transparent
+            border-b-[28px] border-b-destructive
             ">
             </div>
         </div>
-        <div
-          className="relative w-full h-full rounded-full border-8 border-card shadow-inner"
-          style={{
-            transition: "transform 5s cubic-bezier(0.25, 0.1, 0.25, 1)",
-            transform: `rotate(${rotation}deg)`,
-          }}
-        >
-          <div
-            className="absolute inset-0 rounded-full"
-            style={{ background: `conic-gradient(${conicGradient})` }}
-          ></div>
-          {slices.map((slice, index) => {
-            const textRotation = index * sliceAngle + sliceAngle / 2;
-            return (
-              <div
-                key={index}
-                className="absolute w-1/2 h-1/2 top-0 left-1/4 flex items-start justify-center pt-4 text-2xl font-bold text-white"
-                style={{
-                  transform: `rotate(${textRotation}deg)`,
-                  transformOrigin: "50% 100%",
-                }}
-              >
-                <span style={{ transform: `rotate(-90deg)` }} className="drop-shadow-sm">{slice.value}</span>
-              </div>
-            );
-          })}
+
+        {/* Wheel Container */}
+        <div className="relative w-full h-full rounded-full p-2" style={{background: 'linear-gradient(45deg, hsl(var(--card)), hsl(var(--border)))'}}>
+            <div
+            className="relative w-full h-full rounded-full border-4 border-background/50 shadow-inner"
+            style={{
+                transition: "transform 5s cubic-bezier(0.25, 0.1, 0.25, 1)",
+                transform: `rotate(${rotation}deg)`,
+            }}
+            >
+            <div
+                className="absolute inset-0 rounded-full"
+                style={{ background: `conic-gradient(${conicGradient})` }}
+            ></div>
+            {slices.map((slice, index) => {
+                const textRotation = index * sliceAngle + sliceAngle / 2;
+                return (
+                <div
+                    key={index}
+                    className="absolute w-1/2 h-1/2 top-0 left-1/4 flex items-start justify-center pt-4 text-2xl font-bold text-white"
+                    style={{
+                    transform: `rotate(${textRotation}deg)`,
+                    transformOrigin: "50% 100%",
+                    }}
+                >
+                    <span style={{ transform: `rotate(-90deg)` }} className="drop-shadow-md">{slice.value}</span>
+                </div>
+                );
+            })}
+            </div>
         </div>
+
+        {/* Spin Button */}
         <div 
           onClick={handleSpin}
           className={cn(
