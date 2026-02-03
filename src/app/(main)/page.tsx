@@ -1,5 +1,14 @@
-// This page is a placeholder to resolve a build issue on Vercel.
-// The root traffic is handled by src/app/page.tsx, which redirects to /earn.
+"use client";
+
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+
 export default function MainPage() {
-  return null;
+  const router = useRouter();
+
+  useEffect(() => {
+    router.replace('/earn');
+  }, [router]);
+
+  return null; // Render nothing, redirecting...
 }
